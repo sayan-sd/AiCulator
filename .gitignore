@@ -1,0 +1,52 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Dependency directories
+node_modules/
+bower_components/
+
+# Build output
+dist/
+dist-ssr/
+.build/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Editor settings
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Debugging
+*.log
+
+# Coverage
+coverage/
+
+# Production builds
+build/
+
+# Local config files
+*.local
+*.env.local
+
+# OS-generated files
+Thumbs.db
+ehthumbs.db
+
+# files with sensitive information
+**/firebaseServiceAccKey.json
