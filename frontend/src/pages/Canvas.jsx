@@ -328,11 +328,6 @@ const Canvas = () => {
                                     <span className="result-highlight">
                                         {latex.result}
                                     </span>
-                                    {/* <span>{latex.expression} =</span>
-                                    <span>=</span>
-                                    <span className="result-highlight">
-                                        {latex.result}
-                                    </span> */}
                                 </div>
                             </div>
                         </Draggable>

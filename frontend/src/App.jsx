@@ -1,9 +1,16 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import Canvas from "./pages/Canvas";
+import Calculator from './pages/Calculator';
 
 const paths = [
     {
         path: '/',
+        element: (
+            <Calculator />
+        ),
+    },
+    {
+        path: '/canvas',
         element: (
             <Canvas />
         ),
