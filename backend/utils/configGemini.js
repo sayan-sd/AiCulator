@@ -29,9 +29,10 @@ const analyze_image = async (image, dict_of_vars) => {
     Make sure to use extra backslashes for escape characters like \\f -> \\\\f, \\n -> \\\\n, etc.
     Here is a dictionary of user-assigned variables. If the given expression has any of these variables, use its actual value from this dictionary accordingly: ${JSON.stringify(
         dict_of_vars
-    )}. "
+    )}.
     RETURN YOUR RESPONSE AS A VALID JSON ARRAY WITH LOWERCASE true/false FOR BOOLEAN VALUES.
     DO NOT USE BACKTICKS OR MARKDOWN FORMATTING.
+    NEVER ADD ANY EQUAL(=) OR QUESTION(?) SIGN IN THE 'expr' AT THE END.
     PROPERLY QUOTE ALL KEYS AND VALUES IN THE DICTIONARY.
     `;
 
@@ -43,7 +44,7 @@ const analyze_image = async (image, dict_of_vars) => {
 
     const response = await result.response;
     const responseText = response.text();
-    console.log("Raw Response:", responseText);
+    // console.log("Raw Response:", responseText);
 
     let answers = [];
     try {
@@ -52,14 +53,16 @@ const analyze_image = async (image, dict_of_vars) => {
             // Remove markdown code block syntax
             .replace(/```json\n?/g, "")
             .replace(/```\n?/g, "")
-            // Replace single quotes with double quotes
-            .replace(/'/g, '"')
-            // Remove any extra whitespace
+            // Replace only the quotes that are JSON property delimiters
+            .replace(/([{,]\s*)'([^']+)'(\s*:)/g, '$1"$2"$3')  // Replace property names
+            .replace(/:\s*'([^']+)'([,}])/g, ': "$1"$2')
             .trim();
 
         // console.log("Cleaned Response:", cleanedResponse);
 
         answers = JSON.parse(cleanedResponse);
+
+        // console.log("Answered:", answers)
 
         // Verify that answers is an array
         if (!Array.isArray(answers)) {
