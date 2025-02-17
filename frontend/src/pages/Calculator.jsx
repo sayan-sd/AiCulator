@@ -15,126 +15,164 @@ import {
     PlusSquare,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { evaluate } from "mathjs";
 
 const CalculatorPage = () => {
     const navigate = useNavigate();
     const [displayValue, setDisplayValue] = useState("0");
     const [equation, setEquation] = useState("");
-    const [storedValue, setStoredValue] = useState(null);
-    const [operator, setOperator] = useState(null);
     const [waitingForOperand, setWaitingForOperand] = useState(false);
-
-    const clearDisplay = () => {
-        setDisplayValue("0");
-        setEquation("");
-        setStoredValue(null);
-        setOperator(null);
-        setWaitingForOperand(false);
-    };
 
     const inputDigit = (digit) => {
         if (waitingForOperand) {
             setDisplayValue(String(digit));
+            setEquation(equation + String(digit));
             setWaitingForOperand(false);
         } else {
             setDisplayValue(
                 displayValue === "0" ? String(digit) : displayValue + digit
             );
+            setEquation(equation + String(digit));
         }
     };
 
     const inputDot = () => {
         if (waitingForOperand) {
             setDisplayValue("0.");
+            setEquation(equation + "0.");
             setWaitingForOperand(false);
-        } else if (!displayValue.includes(".")) {
+            return;
+        }
+        if (!displayValue.includes(".")) {
             setDisplayValue(displayValue + ".");
+            setEquation(equation + ".");
         }
-    };
-
-    const getOperatorSymbol = (op) => {
-        switch (op) {
-            case "add":
-                return "+";
-            case "subtract":
-                return "-";
-            case "multiply":
-                return "×";
-            case "divide":
-                return "÷";
-            default:
-                return "";
-        }
-    };
-
-    const performOperation = (nextOperator) => {
-        const inputValue = parseFloat(displayValue);
-        const operatorSymbol = getOperatorSymbol(nextOperator);
-
-        if (storedValue === null) {
-            setEquation(`${displayValue} ${operatorSymbol} `);
-            setStoredValue(inputValue);
-        } else if (operator) {
-            const result = calculate(storedValue, inputValue, operator);
-            setStoredValue(result);
-            setEquation(`${equation}${displayValue} ${operatorSymbol} `);
-        }
-
-        setWaitingForOperand(true);
-        setOperator(nextOperator);
-    };
-
-    const calculate = (firstValue, secondValue, op) => {
-        switch (op) {
-            case "add":
-                return firstValue + secondValue;
-            case "subtract":
-                return firstValue - secondValue;
-            case "multiply":
-                return firstValue * secondValue;
-            case "divide":
-                return firstValue / secondValue;
-            default:
-                return secondValue;
-        }
-    };
-
-    const calculateResult = () => {
-        if (operator && storedValue !== null) {
-            const inputValue = parseFloat(displayValue);
-            const result = calculate(storedValue, inputValue, operator);
-            setEquation(`${equation}${displayValue} = ${result}`);
-            setDisplayValue(String(result));
-            setStoredValue(null);
-            setOperator(null);
-            setWaitingForOperand(true);
-        }
-    };
-
-    const calculatePercentage = () => {
-        const value = parseFloat(displayValue);
-        const result = value / 100;
-        setDisplayValue(String(result));
-        setEquation(`${value}% = ${result}`);
-    };
-
-    const calculateSquare = () => {
-        const value = parseFloat(displayValue);
-        const result = value * value;
-        setDisplayValue(String(result));
-        setEquation(`${value}² = ${result}`);
-    };
-
-    const calculateSquareRoot = () => {
-        const value = parseFloat(displayValue);
-        const result = Math.sqrt(value);
-        setDisplayValue(String(result));
-        setEquation(`√${value} = ${result}`);
     };
 
     const toggleSign = () => {
-        const value = parseFloat(displayValue);
-        setDisplayValue(String(-value));
+        if (displayValue === "0") return;
+        const newValue = displayValue.startsWith("-")
+            ? displayValue.slice(1)
+            : `-${displayValue}`;
+        setDisplayValue(newValue);
+        setEquation(equation.replace(/(-?\d*\.?\d+)$/, newValue));
+    };
+
+    const clearDisplay = () => {
+        setDisplayValue("0");
+        setEquation("");
+        setWaitingForOperand(false);
+    };
+
+    const calculatePercentage = () => {
+        try {
+            const value = parseFloat(displayValue);
+            const result = value / 100;
+            setDisplayValue(String(result));
+            setEquation(equation.replace(/(-?\d*\.?\d+)$/, result));
+            setWaitingForOperand(true);
+        } catch (error) {
+            setDisplayValue("Error");
+        }
+    };
+
+    const calculateSquare = () => {
+        try {
+            const value = parseFloat(displayValue);
+            const result = value * value;
+            setDisplayValue(String(result));
+            setEquation(equation.replace(/(-?\d*\.?\d+)$/, result));
+            setWaitingForOperand(true);
+        } catch (error) {
+            setDisplayValue("Error");
+        }
+    };
+
+    const calculateSquareRoot = () => {
+        try {
+            const value = parseFloat(displayValue);
+            if (value < 0) throw new Error();
+            const result = Math.sqrt(value);
+            setDisplayValue(String(result));
+            setEquation(equation.replace(/(-?\d*\.?\d+)$/, result));
+            setWaitingForOperand(true);
+        } catch (error) {
+            setDisplayValue("Error");
+        }
+    };
+
+    const calculateFactorial = () => {
+        try {
+            const value = parseInt(displayValue);
+            if (value < 0 || !Number.isInteger(value)) throw new Error();
+            let result = 1;
+            for (let i = 2; i <= value; i++) result *= i;
+            setDisplayValue(String(result));
+            setEquation(equation.replace(/(-?\d*\.?\d+)$/, result));
+            setWaitingForOperand(true);
+        } catch (error) {
+            setDisplayValue("Error");
+        }
+    };
+
+    const calculateLog = () => {
+        try {
+            const value = parseFloat(displayValue);
+            if (value <= 0) throw new Error();
+            const result = Math.log10(value);
+            setDisplayValue(String(result));
+            setEquation(equation.replace(/(-?\d*\.?\d+)$/, result));
+            setWaitingForOperand(true);
+        } catch (error) {
+            setDisplayValue("Error");
+        }
+    };
+
+    const performOperation = (op) => {
+        const operators = {
+            add: "+",
+            subtract: "-",
+            multiply: "*",
+            divide: "/",
+        };
+        
+        // Handle consecutive operators
+        const lastChar = equation.slice(-1);
+        if (["+", "-", "*", "/"].includes(lastChar)) {
+            setEquation(equation.slice(0, -1) + operators[op]);
+        } else {
+            setEquation(equation + operators[op]);
+        }
+        setWaitingForOperand(true);
+    };
+
+    const calculateResult = () => {
+        try {
+            let expr = equation;
+            
+            // Handle trailing operators
+            if (["+", "-", "*", "/"].includes(expr.slice(-1))) {
+                expr = expr.slice(0, -1);
+            }
+
+            if (!expr) return;
+
+            const result = evaluate(expr);
+            setDisplayValue(String(result));
+            setEquation(String(result));
+            setWaitingForOperand(true);
+        } catch (error) {
+            setDisplayValue("Error");
+            setEquation("");
+        }
+    };
+
+    const handleBackspace = () => {
+        if (waitingForOperand) return;
+        
+        const newDisplay = displayValue.slice(0, -1) || "0";
+        setDisplayValue(newDisplay);
+        setEquation(equation.slice(0, -1));
     };
 
     return (
@@ -149,9 +187,9 @@ const CalculatorPage = () => {
                 </div>
             </div>
 
-            {/* Calculator Grid */}
+            {/* Controls */}
             <div className="grid grid-cols-5 gap-2 flex-1">
-                {/* Special Mode Buttons */}
+                {/* Row 1 */}
                 <button
                     onClick={() => navigate("/photo")}
                     className="bg-blue-600 text-white p-2 rounded-xl hover:bg-blue-700 transition-colors flex flex-col items-center justify-center"
@@ -166,8 +204,6 @@ const CalculatorPage = () => {
                     <Pencil className="h-5 w-5 md:h-6 md:w-6" />
                     <span className="text-xs mt-1">Draw</span>
                 </button>
-
-                {/* Additional Functions */}
                 <button
                     onClick={calculatePercentage}
                     className="bg-gray-600 text-white p-2 rounded-xl hover:bg-gray-500 transition-colors"
@@ -176,18 +212,18 @@ const CalculatorPage = () => {
                 </button>
                 <button
                     onClick={calculateSquare}
-                    className="bg-gray-600 text-white p-2 rounded-xl hover:bg-gray-500 transition-colors"
+                    className="bg-gray-600 text-white p-2 rounded-xl hover:bg-gray-500 transition-colors text-xl md:text-2xl"
                 >
-                    <Square className="h-5 w-5 md:h-6 md:w-6 mx-auto" />
+                    x²
                 </button>
                 <button
                     onClick={calculateSquareRoot}
-                    className="bg-gray-600 text-white p-2 rounded-xl hover:bg-gray-500 transition-colors"
+                    className="bg-gray-600 text-white p-2 rounded-xl hover:bg-gray-500 transition-colors text-xl md:text-2xl"
                 >
-                    <PlusSquare className="h-5 w-5 md:h-6 md:w-6 mx-auto" />
+                    √
                 </button>
 
-                {/* Rest of the buttons */}
+                {/* Row 2 */}
                 <button
                     onClick={clearDisplay}
                     className="bg-red-500 text-white p-2 rounded-xl hover:bg-red-600 transition-colors flex items-center justify-center gap-1"
@@ -196,24 +232,16 @@ const CalculatorPage = () => {
                     <span className="text-sm">C</span>
                 </button>
                 <button
-                    onClick={toggleSign}
-                    className="bg-gray-700 text-white p-2 rounded-xl hover:bg-gray-600 transition-colors"
+                    onClick={calculateLog}
+                    className="bg-gray-700 text-white p-2 rounded-xl hover:bg-gray-600 transition-colors text-xl md:text-2xl"
                 >
-                    <RotateCcw className="h-5 w-5 md:h-6 md:w-6 mx-auto" />
+                    log
                 </button>
                 <button
-                    onClick={() =>
-                        setDisplayValue(displayValue.slice(0, -1) || "0")
-                    }
+                    onClick={handleBackspace}
                     className="bg-gray-700 text-white p-2 rounded-xl hover:bg-gray-600 transition-colors"
                 >
                     <Delete className="h-5 w-5 md:h-6 md:w-6 mx-auto" />
-                </button>
-                <button
-                    onClick={() => performOperation("divide")}
-                    className="bg-gray-600 text-white p-2 rounded-xl hover:bg-gray-500 transition-colors"
-                >
-                    <Divide className="h-5 w-5 md:h-6 md:w-6 mx-auto" />
                 </button>
                 <button
                     onClick={() => performOperation("multiply")}
@@ -221,17 +249,32 @@ const CalculatorPage = () => {
                 >
                     <Multiply className="h-5 w-5 md:h-6 md:w-6 mx-auto" />
                 </button>
+                <button
+                    onClick={calculateFactorial}
+                    className="bg-gray-600 text-white p-2 rounded-xl hover:bg-gray-500 transition-colors text-xl md:text-2xl"
+                >
+                    x!
+                </button>
 
-                {/* Numbers and Operations */}
-                {[7, 8, 9].map((num) => (
-                    <button
-                        key={num}
-                        onClick={() => inputDigit(num)}
-                        className="bg-gray-700 text-white p-2 rounded-xl hover:bg-gray-600 transition-colors text-xl md:text-2xl"
-                    >
-                        {num}
-                    </button>
-                ))}
+                {/* Row 3 */}
+                <button
+                    onClick={() => inputDigit(7)}
+                    className="bg-gray-700 text-white p-2 rounded-xl hover:bg-gray-600 transition-colors text-xl md:text-2xl"
+                >
+                    7
+                </button>
+                <button
+                    onClick={() => inputDigit(8)}
+                    className="bg-gray-700 text-white p-2 rounded-xl hover:bg-gray-600 transition-colors text-xl md:text-2xl"
+                >
+                    8
+                </button>
+                <button
+                    onClick={() => inputDigit(9)}
+                    className="bg-gray-700 text-white p-2 rounded-xl hover:bg-gray-600 transition-colors text-xl md:text-2xl"
+                >
+                    9
+                </button>
                 <button
                     onClick={() => performOperation("subtract")}
                     className="bg-gray-600 text-white p-2 rounded-xl hover:bg-gray-500 transition-colors"
@@ -240,37 +283,70 @@ const CalculatorPage = () => {
                 </button>
                 <button
                     onClick={() => performOperation("add")}
-                    className="bg-gray-600 text-white p-2 rounded-xl hover:bg-gray-500 transition-colors row-span-2 h-full"
+                    className="bg-gray-600 text-white p-2 rounded-xl hover:bg-gray-500 transition-colors row-span-2"
                 >
                     <Plus className="h-5 w-5 md:h-6 md:w-6 mx-auto" />
                 </button>
 
-                {[4, 5, 6].map((num) => (
-                    <button
-                        key={num}
-                        onClick={() => inputDigit(num)}
-                        className="bg-gray-700 text-white p-2 rounded-xl hover:bg-gray-600 transition-colors text-xl md:text-2xl"
-                    >
-                        {num}
-                    </button>
-                ))}
+                {/* Row 4 */}
+                <button
+                    onClick={() => inputDigit(4)}
+                    className="bg-gray-700 text-white p-2 rounded-xl hover:bg-gray-600 transition-colors text-xl md:text-2xl"
+                >
+                    4
+                </button>
+                <button
+                    onClick={() => inputDigit(5)}
+                    className="bg-gray-700 text-white p-2 rounded-xl hover:bg-gray-600 transition-colors text-xl md:text-2xl"
+                >
+                    5
+                </button>
+                <button
+                    onClick={() => inputDigit(6)}
+                    className="bg-gray-700 text-white p-2 rounded-xl hover:bg-gray-600 transition-colors text-xl md:text-2xl"
+                >
+                    6
+                </button>
+                <button
+                    onClick={() => performOperation("divide")}
+                    className="bg-gray-600 text-white p-2 rounded-xl hover:bg-gray-500 transition-colors"
+                >
+                    <Divide className="h-5 w-5 md:h-6 md:w-6 mx-auto" />
+                </button>
+
+                {/* Row 5 */}
+                <button
+                    onClick={() => inputDigit(1)}
+                    className="bg-gray-700 text-white p-2 rounded-xl hover:bg-gray-600 transition-colors text-xl md:text-2xl"
+                >
+                    1
+                </button>
+                <button
+                    onClick={() => inputDigit(2)}
+                    className="bg-gray-700 text-white p-2 rounded-xl hover:bg-gray-600 transition-colors text-xl md:text-2xl"
+                >
+                    2
+                </button>
+                <button
+                    onClick={() => inputDigit(3)}
+                    className="bg-gray-700 text-white p-2 rounded-xl hover:bg-gray-600 transition-colors text-xl md:text-2xl"
+                >
+                    3
+                </button>
+                <button
+                    onClick={toggleSign}
+                    className="bg-gray-600 text-white p-2 rounded-xl hover:bg-gray-500 transition-colors text-xl md:text-2xl"
+                >
+                    ±
+                </button>
                 <button
                     onClick={calculateResult}
-                    className="bg-blue-600 text-white p-2 rounded-xl hover:bg-blue-700 transition-colors row-span-2 h-full"
+                    className="bg-blue-600 text-white p-2 rounded-xl hover:bg-blue-700 transition-colors row-span-2"
                 >
                     <Equal className="h-5 w-5 md:h-6 md:w-6 mx-auto" />
                 </button>
 
-                {[1, 2, 3].map((num) => (
-                    <button
-                        key={num}
-                        onClick={() => inputDigit(num)}
-                        className="bg-gray-700 text-white p-2 rounded-xl hover:bg-gray-600 transition-colors text-xl md:text-2xl"
-                    >
-                        {num}
-                    </button>
-                ))}
-
+                {/* Row 6 */}
                 <button
                     onClick={() => inputDigit(0)}
                     className="bg-gray-700 text-white p-2 rounded-xl hover:bg-gray-600 transition-colors text-xl md:text-2xl col-span-2"
