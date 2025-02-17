@@ -3,9 +3,10 @@ import "../stylesheets/Canvas.css";
 import { colors } from "../utils/colorPalette";
 import axios from "axios";
 import Draggable from "react-draggable";
-import { Menu, BrainCircuit, X } from "lucide-react";
+import { Menu, BrainCircuit, X, Calculator } from "lucide-react";
 import PenWidthControl from "../components/PenWidthControl";
 import LoadingDots from "../components/LoadingDots";
+import { useNavigate } from "react-router-dom";
 
 let response = {
     expr: "",
@@ -31,6 +32,7 @@ const Canvas = () => {
     const [penWidth, setPenWidth] = useState(3);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const navigate = useNavigate();
 
     // initialize the canvas
     useEffect(() => {
@@ -251,41 +253,51 @@ const Canvas = () => {
                     isMenuOpen ? "translate-x-0" : "-translate-x-full"
                 }`}
             >
-                <div className="p-4 w-16 flex flex-col items-center space-y-4">
+                <div className="pb-4 w-16 flex flex-col h-full justify-between items-center space-y-4">
                     {/* close button */}
-                    <button
-                        onClick={() => setIsMenuOpen(!isMenuOpen)}
-                        className="p-2 rounded-md bg-gray-400 text-black cursor-pointer"
-                    >
-                        <X size={24} />
-                    </button>
+                    <div className="p-4 w-16 flex flex-col items-center space-y-4">
+                        <button
+                            onClick={() => setIsMenuOpen(!isMenuOpen)}
+                            className="p-2 rounded-md bg-gray-400 text-black cursor-pointer"
+                        >
+                            <X size={24} />
+                        </button>
 
-                    {/* Color Palette */}
-                    <div className="flex flex-col space-y-2">
-                        {colors.map((colorVal) => (
-                            <button
-                                key={colorVal}
-                                className={`w-8 h-8 box-border duration-200 rounded-full border-2 ${
-                                    color == colorVal
-                                        ? "border-gray-900"
-                                        : "border-transparent"
-                                }`}
-                                style={{ backgroundColor: colorVal }}
-                                onClick={() => setColor(colorVal)}
-                            />
-                        ))}
+                        {/* Color Palette */}
+                        <div className="flex flex-col space-y-2">
+                            {colors.map((colorVal) => (
+                                <button
+                                    key={colorVal}
+                                    className={`w-8 h-8 box-border duration-200 rounded-full border-2 ${
+                                        color == colorVal
+                                            ? "border-gray-900"
+                                            : "border-transparent"
+                                    }`}
+                                    style={{ backgroundColor: colorVal }}
+                                    onClick={() => setColor(colorVal)}
+                                />
+                            ))}
+                        </div>
+
+                        <div className="h-1 w-full rounded-full mt-2 bg-white" />
+
+                        {/* width control slider */}
+                        <PenWidthControl
+                            penWidth={penWidth}
+                            setPenWidth={setPenWidth}
+                            isMenuOpen={isMenuOpen}
+                            selectedColor={color}
+                            menuBar={isMenuOpen}
+                        />
                     </div>
 
-                    <div className="h-1 w-full rounded-full mt-2 bg-white" />
-
-                    {/* width control slider */}
-                    <PenWidthControl
-                        penWidth={penWidth}
-                        setPenWidth={setPenWidth}
-                        isMenuOpen={isMenuOpen}
-                        selectedColor={color}
-                        menuBar={isMenuOpen}
-                    />
+                    {/* home */}
+                    <button
+                        onClick={() => navigate("/")}
+                        className="p-2 rounded-md bg-gray-400 text-black cursor-pointer"
+                    >
+                        <Calculator size={24} />
+                    </button>
                 </div>
             </div>
 

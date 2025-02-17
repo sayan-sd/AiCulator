@@ -5,7 +5,7 @@ const cors = require('cors');
 const analyze_image = require('./utils/configGemini');
 
 // middleware
-app.use(express.json());
+app.use(express.json({ limit: "50mb" }));
 app.use(cors());
 
 

@@ -16,12 +16,15 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { evaluate } from "mathjs";
+import axios from 'axios'; 
+import PhotoCaptureModal from "../components/PhotoCaptureModal";
 
 const CalculatorPage = () => {
     const navigate = useNavigate();
     const [displayValue, setDisplayValue] = useState("0");
     const [equation, setEquation] = useState("");
     const [waitingForOperand, setWaitingForOperand] = useState(false);
+    const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
 
     const inputDigit = (digit) => {
         if (waitingForOperand) {
@@ -34,11 +37,12 @@ const CalculatorPage = () => {
             );
             setEquation(equation + String(digit));
         }
+        setDisplayValue("0");
     };
 
     const inputDot = () => {
         if (waitingForOperand) {
-            setDisplayValue("0.");
+            // setDisplayValue("0.");
             setEquation(equation + "0.");
             setWaitingForOperand(false);
             return;
@@ -47,6 +51,7 @@ const CalculatorPage = () => {
             setDisplayValue(displayValue + ".");
             setEquation(equation + ".");
         }
+        setDisplayValue("0");
     };
 
     const toggleSign = () => {
@@ -135,7 +140,7 @@ const CalculatorPage = () => {
             multiply: "*",
             divide: "/",
         };
-        
+
         // Handle consecutive operators
         const lastChar = equation.slice(-1);
         if (["+", "-", "*", "/"].includes(lastChar)) {
@@ -149,7 +154,7 @@ const CalculatorPage = () => {
     const calculateResult = () => {
         try {
             let expr = equation;
-            
+
             // Handle trailing operators
             if (["+", "-", "*", "/"].includes(expr.slice(-1))) {
                 expr = expr.slice(0, -1);
@@ -159,7 +164,7 @@ const CalculatorPage = () => {
 
             const result = evaluate(expr);
             setDisplayValue(String(result));
-            setEquation(String(result));
+            setEquation("");
             setWaitingForOperand(true);
         } catch (error) {
             setDisplayValue("Error");
@@ -169,10 +174,43 @@ const CalculatorPage = () => {
 
     const handleBackspace = () => {
         if (waitingForOperand) return;
-        
+
         const newDisplay = displayValue.slice(0, -1) || "0";
         setDisplayValue(newDisplay);
         setEquation(equation.slice(0, -1));
+    };
+
+    const handlePhotoCapture = async (photoData) => {
+        try {
+            setDisplayValue("Processing...");
+            
+            const response = await axios({
+                method: "post",
+                url: `${import.meta.env.VITE_API_URL}/calculate`,
+                data: {
+                    image: photoData,
+                    dict_of_vars: {} // Pass empty object if no variables are stored
+                },
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const results = response.data;
+            if (results && results.length > 0) {
+                const firstResult = results[0];
+                setDisplayValue(firstResult.result.toString());
+                if (firstResult.expr) {
+                    setEquation(firstResult.expr);
+                }
+            } else {
+                setDisplayValue("No result");
+            }
+        } catch (error) {
+            console.error("Error processing photo:", error);
+            setDisplayValue("Error");
+            setEquation("");
+        }
     };
 
     return (
@@ -191,7 +229,7 @@ const CalculatorPage = () => {
             <div className="grid grid-cols-5 gap-2 flex-1">
                 {/* Row 1 */}
                 <button
-                    onClick={() => navigate("/photo")}
+                    onClick={() => setIsPhotoModalOpen(true)}
                     className="bg-blue-600 text-white p-2 rounded-xl hover:bg-blue-700 transition-colors flex flex-col items-center justify-center"
                 >
                     <Camera className="h-5 w-5 md:h-6 md:w-6" />
@@ -229,7 +267,7 @@ const CalculatorPage = () => {
                     className="bg-red-500 text-white p-2 rounded-xl hover:bg-red-600 transition-colors flex items-center justify-center gap-1"
                 >
                     <RefreshCcw className="h-5 w-5 md:h-6 md:w-6" />
-                    <span className="text-sm">C</span>
+                    {/* <span className="text-sm">C</span> */}
                 </button>
                 <button
                     onClick={calculateLog}
@@ -360,6 +398,12 @@ const CalculatorPage = () => {
                     .
                 </button>
             </div>
+
+            <PhotoCaptureModal
+                isOpen={isPhotoModalOpen}
+                onClose={() => setIsPhotoModalOpen(false)}
+                onPhotoCapture={handlePhotoCapture}
+            />
         </div>
     );
 };
