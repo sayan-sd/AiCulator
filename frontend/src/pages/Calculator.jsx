@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
     Camera,
     Pencil,
@@ -10,13 +10,11 @@ import {
     Delete,
     RefreshCcw,
     Percent,
-    Square,
-    RotateCcw,
-    PlusSquare,
+    Info,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { evaluate } from "mathjs";
-import axios from 'axios'; 
+import axios from "axios";
 import PhotoCaptureModal from "../components/PhotoCaptureModal";
 
 const CalculatorPage = () => {
@@ -25,6 +23,88 @@ const CalculatorPage = () => {
     const [equation, setEquation] = useState("");
     const [waitingForOperand, setWaitingForOperand] = useState(false);
     const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+    const [showKeyboardInfo, setShowKeyboardInfo] = useState(false);
+
+    // Add keyboard event listener
+    useEffect(() => {
+        const handleKeyDown = (event) => {
+            event.preventDefault();
+
+            const key = event.key;
+
+            // Handle numeric keys (0-9)
+            if (/^[0-9]$/.test(key)) {
+                inputDigit(parseInt(key, 10));
+                return;
+            }
+
+            // Handle decimal point
+            if (key === ".") {
+                inputDot();
+                return;
+            }
+
+            // Handle operations
+            switch (key) {
+                case "+":
+                    performOperation("add");
+                    break;
+                case "-":
+                    performOperation("subtract");
+                    break;
+                case "*":
+                    performOperation("multiply");
+                    break;
+                case "/":
+                    performOperation("divide");
+                    break;
+                case "%":
+                    calculatePercentage();
+                    break;
+                case "Enter":
+                case "=":
+                    calculateResult();
+                    break;
+                case "Escape":
+                case "c":
+                case "C":
+                    clearDisplay();
+                    break;
+                case "Backspace":
+                    handleBackspace();
+                    break;
+                case "!":
+                    calculateFactorial();
+                    break;
+                case "s":
+                case "S":
+                    calculateSquare();
+                    break;
+                case "q":
+                case "Q":
+                    calculateQube();
+                    break;
+                case "r":
+                case "R":
+                    calculateSquareRoot();
+                    break;
+                case "l":
+                case "L":
+                    calculateLog();
+                    break;
+                default:
+                    break;
+            }
+        };
+
+        // Add event listener when component mounts
+        window.addEventListener("keydown", handleKeyDown);
+
+        // Remove event listener when component unmounts
+        return () => {
+            window.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [equation, displayValue, waitingForOperand]); // Dependencies for the useEffect
 
     const inputDigit = (digit) => {
         if (waitingForOperand) {
@@ -54,39 +134,53 @@ const CalculatorPage = () => {
         setDisplayValue("0");
     };
 
-    const toggleSign = () => {
-        if (displayValue === "0") return;
-        const newValue = displayValue.startsWith("-")
-            ? displayValue.slice(1)
-            : `-${displayValue}`;
-        setDisplayValue(newValue);
-        setEquation(equation.replace(/(-?\d*\.?\d+)$/, newValue));
-    };
-
     const clearDisplay = () => {
         setDisplayValue("0");
         setEquation("");
         setWaitingForOperand(false);
     };
 
-    const calculatePercentage = () => {
+    const evaluatePendingExpression = () => {
         try {
-            const value = parseFloat(displayValue);
-            const result = value / 100;
+            // trailing operators
+            let expr = equation;
+            if (["+", "-", "*", "/"].includes(expr.slice(-1))) {
+                expr = expr.slice(0, -1);
+            }
+
+            if (!expr) return displayValue;
+
+            return evaluate(expr);
+        } catch (error) {
+            setDisplayValue("Error");
+            return displayValue;
+        }
+    };
+
+    const calculateSquare = () => {
+        try {
+            // calculate any pending expression
+            const valueToSquare = evaluatePendingExpression();
+
+            const value = parseFloat(valueToSquare);
+            const result = value * value;
             setDisplayValue(String(result));
-            setEquation(equation.replace(/(-?\d*\.?\d+)$/, result));
+            setEquation("");
             setWaitingForOperand(true);
         } catch (error) {
             setDisplayValue("Error");
         }
     };
 
-    const calculateSquare = () => {
+    const calculateQube = () => {
         try {
-            const value = parseFloat(displayValue);
-            const result = value * value;
+            // calculate any pending expression
+            const valueToCube = evaluatePendingExpression();
+
+            const value = parseFloat(valueToCube);
+            const result = value * value * value;
             setDisplayValue(String(result));
-            setEquation(equation.replace(/(-?\d*\.?\d+)$/, result));
+            setEquation("");
             setWaitingForOperand(true);
         } catch (error) {
             setDisplayValue("Error");
@@ -95,41 +189,83 @@ const CalculatorPage = () => {
 
     const calculateSquareRoot = () => {
         try {
-            const value = parseFloat(displayValue);
-            if (value < 0) throw new Error();
+            // calculate any pending expression
+            const valueToRoot = evaluatePendingExpression();
+
+            const value = parseFloat(valueToRoot);
+            if (value < 0)
+                throw new Error(
+                    "Cannot calculate square root of negative number"
+                );
+
             const result = Math.sqrt(value);
             setDisplayValue(String(result));
-            setEquation(equation.replace(/(-?\d*\.?\d+)$/, result));
+            setEquation("");
             setWaitingForOperand(true);
         } catch (error) {
             setDisplayValue("Error");
+            setEquation("");
         }
     };
 
     const calculateFactorial = () => {
         try {
-            const value = parseInt(displayValue);
-            if (value < 0 || !Number.isInteger(value)) throw new Error();
+            // First calculate any pending expression
+            const valueForFactorial = evaluatePendingExpression();
+
+            const value = parseInt(valueForFactorial);
+            if (value < 0 || !Number.isInteger(value))
+                throw new Error(
+                    "Cannot calculate factorial of negative or non-integer number"
+                );
+
             let result = 1;
             for (let i = 2; i <= value; i++) result *= i;
+
             setDisplayValue(String(result));
-            setEquation(equation.replace(/(-?\d*\.?\d+)$/, result));
+            setEquation("");
             setWaitingForOperand(true);
         } catch (error) {
             setDisplayValue("Error");
+            setEquation("");
         }
     };
 
     const calculateLog = () => {
         try {
-            const value = parseFloat(displayValue);
-            if (value <= 0) throw new Error();
+            // First calculate any pending expression
+            const valueForLog = evaluatePendingExpression();
+
+            const value = parseFloat(valueForLog);
+            if (value <= 0)
+                throw new Error(
+                    "Cannot calculate logarithm of non-positive number"
+                );
+
             const result = Math.log10(value);
             setDisplayValue(String(result));
-            setEquation(equation.replace(/(-?\d*\.?\d+)$/, result));
+            setEquation("");
             setWaitingForOperand(true);
         } catch (error) {
             setDisplayValue("Error");
+            setEquation("");
+        }
+    };
+
+    const calculatePercentage = () => {
+        try {
+            // First calculate any pending expression
+            const valueForPercentage = evaluatePendingExpression();
+
+            const value = parseFloat(valueForPercentage);
+            const result = value / 100;
+
+            setDisplayValue(String(result));
+            setEquation("");
+            setWaitingForOperand(true);
+        } catch (error) {
+            setDisplayValue("Error");
+            setEquation("");
         }
     };
 
@@ -183,19 +319,19 @@ const CalculatorPage = () => {
     const handlePhotoCapture = async (photoData) => {
         try {
             setDisplayValue("Processing...");
-            
+
             const response = await axios({
                 method: "post",
                 url: `${import.meta.env.VITE_API_URL}/calculate`,
                 data: {
                     image: photoData,
-                    dict_of_vars: {} // Pass empty object if no variables are stored
+                    dict_of_vars: {}, // Pass empty object if no variables are stored
                 },
                 headers: {
-                    'Content-Type': 'application/json'
-                }
+                    "Content-Type": "application/json",
+                },
             });
-            
+
             const results = response.data;
             if (results && results.length > 0) {
                 const firstResult = results[0];
@@ -217,6 +353,48 @@ const CalculatorPage = () => {
         <div className="min-h-screen h-full w-full bg-black p-4 flex flex-col">
             {/* Display */}
             <div className="bg-gray-900 p-4 rounded-xl mb-4 flex-none">
+                {/* Keyboard Shortcuts Info */}
+                <div className="relative">
+                    <button
+                        onClick={() => setShowKeyboardInfo(!showKeyboardInfo)}
+                        className="absolute -top-1 -left-1 text-gray-400 hover:text-white z-10"
+                        aria-label="Keyboard shortcuts"
+                    >
+                        <Info className="h-5 w-5" />
+                    </button>
+
+                    {showKeyboardInfo && (
+                        <div className="absolute top-8 left-0 bg-gray-800 p-3 rounded-lg shadow-lg z-20 w-64 text-sm text-gray-300 border border-gray-700">
+                            <div className="flex justify-between mb-2">
+                                <p className="font-medium">
+                                    Keyboard shortcuts
+                                </p>
+                                <button
+                                    onClick={() => setShowKeyboardInfo(false)}
+                                    className="text-gray-400 hover:text-white"
+                                >
+                                    <Multiply className="h-4 w-4" />
+                                </button>
+                            </div>
+                            <div className="grid grid-cols-1 gap-y-1 text-xs">
+                                <div>0-9: Numbers</div>
+                                <div>+, -, *, /: Operations</div>
+                                <div>Enter, =: Calculate</div>
+                                <div>.: Decimal point</div>
+                                <div>Backspace: Delete</div>
+                                <div>Esc, c: Clear</div>
+                                <div>s: Square (x²)</div>
+                                <div>q: Cube (x³)</div>
+                                <div>r: Square root (√)</div>
+                                <div>!: Factorial</div>
+                                <div>l: Logarithm</div>
+                                <div>%: Percent</div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                
                 <div className="text-gray-400 text-right text-lg h-6 font-mono truncate">
                     {equation}
                 </div>
@@ -282,10 +460,10 @@ const CalculatorPage = () => {
                     <Delete className="h-5 w-5 md:h-6 md:w-6 mx-auto" />
                 </button>
                 <button
-                    onClick={() => performOperation("multiply")}
-                    className="bg-gray-600 text-white p-2 rounded-xl hover:bg-gray-500 transition-colors"
+                    onClick={calculateQube}
+                    className="bg-gray-600 text-white p-2 rounded-xl hover:bg-gray-500 transition-colors text-xl md:text-2xl"
                 >
-                    <Multiply className="h-5 w-5 md:h-6 md:w-6 mx-auto" />
+                    x<sup>3</sup>
                 </button>
                 <button
                     onClick={calculateFactorial}
@@ -346,10 +524,10 @@ const CalculatorPage = () => {
                     6
                 </button>
                 <button
-                    onClick={() => performOperation("divide")}
+                    onClick={() => performOperation("multiply")}
                     className="bg-gray-600 text-white p-2 rounded-xl hover:bg-gray-500 transition-colors"
                 >
-                    <Divide className="h-5 w-5 md:h-6 md:w-6 mx-auto" />
+                    <Multiply className="h-5 w-5 md:h-6 md:w-6 mx-auto" />
                 </button>
 
                 {/* Row 5 */}
@@ -371,12 +549,14 @@ const CalculatorPage = () => {
                 >
                     3
                 </button>
+
                 <button
-                    onClick={toggleSign}
-                    className="bg-gray-600 text-white p-2 rounded-xl hover:bg-gray-500 transition-colors text-xl md:text-2xl"
+                    onClick={() => performOperation("divide")}
+                    className="bg-gray-600 text-white p-2 rounded-xl hover:bg-gray-500 transition-colors"
                 >
-                    ±
+                    <Divide className="h-5 w-5 md:h-6 md:w-6 mx-auto" />
                 </button>
+
                 <button
                     onClick={calculateResult}
                     className="bg-blue-600 text-white p-2 rounded-xl hover:bg-blue-700 transition-colors row-span-2"
