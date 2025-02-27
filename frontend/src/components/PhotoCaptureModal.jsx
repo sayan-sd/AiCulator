@@ -1,56 +1,139 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Camera, Upload, X } from "lucide-react";
 
 const PhotoCaptureModal = ({ isOpen, onClose, onPhotoCapture }) => {
     const [cameraStream, setCameraStream] = useState(null);
+    const [isVideoReady, setIsVideoReady] = useState(false);
+    const [error, setError] = useState(null);
     const videoRef = useRef(null);
     const fileInputRef = useRef(null);
 
+    // Clean up camera when component unmounts or modal closes
+    useEffect(() => {
+        if (isOpen) {
+            setError(null);
+            // Remove automatic camera startup
+            // if (!cameraStream) {
+            //     startCamera();
+            // }
+        } else {
+            stopCamera();
+        }
+        
+        return () => {
+            stopCamera();
+        };
+    }, [isOpen]);
+
+    // Make sure video plays when stream is set
+    useEffect(() => {
+        if (cameraStream && videoRef.current) {
+            videoRef.current.srcObject = cameraStream;
+            videoRef.current.play()
+                .then(() => {
+                    console.log("Video playback started");
+                })
+                .catch(err => {
+                    console.error("Error playing video:", err);
+                    setError(`Error playing video: ${err.message}`);
+                });
+        }
+    }, [cameraStream]);
+
     const startCamera = async () => {
         try {
+            setError(null);
+            
+            // First stop any existing stream
+            stopCamera();
+            
+            console.log("Requesting camera access...");
             const stream = await navigator.mediaDevices.getUserMedia({
-                video: true,
+                video: {
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                },
+                audio: false
             });
+            
+            console.log("Camera access granted, setting stream");
             setCameraStream(stream);
-            videoRef.current.srcObject = stream;
+            
+            // Video element setup is now handled in the useEffect
         } catch (err) {
             console.error("Error accessing camera:", err);
+            setError(`Error accessing camera: ${err.message || "Unknown error"}`);
         }
     };
 
     const stopCamera = () => {
         if (cameraStream) {
+            console.log("Stopping camera stream");
             cameraStream.getTracks().forEach((track) => track.stop());
             setCameraStream(null);
+            setIsVideoReady(false);
+            
+            if (videoRef.current) {
+                videoRef.current.srcObject = null;
+            }
         }
     };
 
+    const handleVideoReady = () => {
+        console.log("Video is ready");
+        setIsVideoReady(true);
+    };
+
     const capturePhoto = () => {
-        if (!videoRef.current || videoRef.current.videoWidth === 0) {
-            console.error("Video not ready for capturing.");
+        if (!videoRef.current || !isVideoReady) {
+            setError("Video not ready for capturing. Please wait for camera to initialize.");
             return;
         }
-        const canvas = document.createElement("canvas");
-        canvas.width = videoRef.current.videoWidth;
-        canvas.height = videoRef.current.videoHeight;
-        canvas.getContext("2d").drawImage(videoRef.current, 0, 0);
-        const photoData = canvas.toDataURL("image/png");
-        onPhotoCapture(photoData);
-        stopCamera();
-        onClose();
+        
+        try {
+            console.log(`Video dimensions: ${videoRef.current.videoWidth}x${videoRef.current.videoHeight}`);
+            
+            const canvas = document.createElement("canvas");
+            canvas.width = videoRef.current.videoWidth || 640;
+            canvas.height = videoRef.current.videoHeight || 480;
+            
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+            
+            const photoData = canvas.toDataURL("image/png");
+            console.log("Photo captured");
+            onPhotoCapture(photoData);
+            stopCamera();
+            onClose();
+        } catch (err) {
+            console.error("Error capturing photo:", err);
+            setError(`Error capturing photo: ${err.message}`);
+        }
     };
 
     const handleFileUpload = (event) => {
         const file = event.target.files[0];
-        // console.log(file)
         if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                onPhotoCapture(reader.result);
-                onClose();
-            };
-            reader.readAsDataURL(file);
+            try {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    onPhotoCapture(reader.result);
+                    onClose();
+                };
+                reader.onerror = () => {
+                    setError("Error reading file");
+                };
+                reader.readAsDataURL(file);
+            } catch (err) {
+                console.error("Error uploading file:", err);
+                setError(`Error uploading file: ${err.message}`);
+            }
         }
+    };
+
+    const handleVideoError = (e) => {
+        console.error("Video element error:", e);
+        setError(`Video error: ${e.target.error ? e.target.error.message : "Unknown error"}`);
     };
 
     if (!isOpen) return null;
@@ -73,22 +156,58 @@ const PhotoCaptureModal = ({ isOpen, onClose, onPhotoCapture }) => {
                     </button>
                 </div>
 
+                {error && (
+                    <div className="bg-red-600 text-white p-2 rounded-lg mb-4">
+                        {error}
+                    </div>
+                )}
+
                 <div className="space-y-4">
                     {cameraStream ? (
                         <div className="relative">
-                            <video
-                                ref={videoRef}
-                                autoPlay
-                                playsInline
-                                className="w-full rounded-lg"
-                            />
-                            <button
-                                onClick={capturePhoto}
-                                className="mt-2 w-full bg-blue-600 hover:bg-blue-700 p-2 rounded-lg flex items-center justify-center gap-2"
-                            >
-                                <Camera size={20} />
-                                Capture Photo
-                            </button>
+                            <div className="bg-black rounded-lg" style={{ height: "300px" }}>
+                                <video
+                                    ref={videoRef}
+                                    autoPlay
+                                    playsInline
+                                    muted
+                                    onLoadedMetadata={handleVideoReady}
+                                    onLoadedData={handleVideoReady}
+                                    onError={handleVideoError}
+                                    className="w-full h-full rounded-lg"
+                                    style={{ objectFit: "contain" }}
+                                />
+                            </div>
+                            <div className="mt-2 flex items-center gap-2">
+                                <button
+                                    onClick={capturePhoto}
+                                    disabled={!isVideoReady}
+                                    className={`w-full p-2 rounded-lg flex items-center justify-center gap-2 ${
+                                        isVideoReady
+                                            ? "bg-blue-600 hover:bg-blue-700"
+                                            : "bg-blue-400 cursor-not-allowed"
+                                    }`}
+                                >
+                                    <Camera size={20} />
+                                    {isVideoReady ? "Capture Photo" : "Camera initializing..."}
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        stopCamera();
+                                        startCamera(); // Restart camera
+                                    }}
+                                    className="bg-yellow-600 hover:bg-yellow-700 p-2 rounded-lg"
+                                    title="Restart Camera"
+                                >
+                                    <Camera size={20} />
+                                </button>
+                                <button
+                                    onClick={stopCamera}
+                                    className="bg-red-600 hover:bg-red-700 p-2 rounded-lg"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
                         </div>
                     ) : (
                         <div className="space-y-2">
@@ -118,6 +237,12 @@ const PhotoCaptureModal = ({ isOpen, onClose, onPhotoCapture }) => {
                             </div>
                         </div>
                     )}
+                </div>
+                
+                {/* Debug info */}
+                <div className="mt-4 text-xs text-gray-400">
+                    <p>Camera active: {cameraStream ? "Yes" : "No"}</p>
+                    <p>Video ready: {isVideoReady ? "Yes" : "No"}</p>
                 </div>
             </div>
         </div>
