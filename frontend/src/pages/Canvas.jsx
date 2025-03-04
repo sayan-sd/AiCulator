@@ -306,7 +306,7 @@ const Canvas = () => {
             {/* Hamburger Menu Button */}
             <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="fixed z-10 top-4 left-4 p-2 rounded-md bg-gray-400 text-black cursor-pointer"
+                className="absolute z-10 top-4 left-4 p-2 rounded-md bg-gray-400 text-black cursor-pointer"
             >
                 <Menu size={24} />
             </button>
@@ -314,7 +314,7 @@ const Canvas = () => {
             {/* Reset Button */}
             <button
                 onClick={() => setReset(true)}
-                className="fixed top-4 z-10 right-4 p-2 rounded-md bg-red-500 font-semibold duration-200 hover:bg-red-600 text-white"
+                className="absolute top-4 z-10 right-4 p-2 rounded-md bg-red-500 font-semibold duration-200 hover:bg-red-600 text-white"
             >
                 Reset
             </button>
@@ -322,7 +322,7 @@ const Canvas = () => {
             {/* Calculate Button */}
             <button
                 onClick={sendData}
-                className="fixed bottom-4 right-4 p-2 calculate-btn font-semibold z-10 rounded-md min-w-[160px] h-[40px] flex items-center justify-center"
+                className="absolute bottom-4 right-4 p-2 calculate-btn font-semibold z-10 rounded-md min-w-[160px] h-[40px] flex items-center justify-center"
                 disabled={isLoading}
             >
                 {isLoading ? (
@@ -341,7 +341,7 @@ const Canvas = () => {
 
             {/* Sidebar Menu */}
             <div
-                className={`fixed left-0 top-0 h-full bg-gray-600 shadow-lg transition-transform duration-300 transform z-10 ${
+                className={` absolute left-0 top-0 h-full bg-gray-600 shadow-lg transition-transform duration-300 transform z-10 ${
                     isMenuOpen ? "translate-x-0" : "-translate-x-full"
                 }`}
             >

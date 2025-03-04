@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Camera, Upload, X } from "lucide-react";
+import { Camera, Upload, X, RefreshCw, SwitchCamera } from "lucide-react";
 
 const PhotoCaptureModal = ({ isOpen, onClose, onPhotoCapture }) => {
     const [cameraStream, setCameraStream] = useState(null);
     const [isVideoReady, setIsVideoReady] = useState(false);
     const [error, setError] = useState(null);
+    const [currentCameraType, setCurrentCameraType] = useState("user");
     const videoRef = useRef(null);
     const fileInputRef = useRef(null);
 
@@ -12,10 +13,6 @@ const PhotoCaptureModal = ({ isOpen, onClose, onPhotoCapture }) => {
     useEffect(() => {
         if (isOpen) {
             setError(null);
-            // Remove automatic camera startup
-            // if (!cameraStream) {
-            //     startCamera();
-            // }
         } else {
             stopCamera();
         }
@@ -47,23 +44,48 @@ const PhotoCaptureModal = ({ isOpen, onClose, onPhotoCapture }) => {
             // First stop any existing stream
             stopCamera();
             
-            console.log("Requesting camera access...");
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: {
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
-                },
-                audio: false
-            });
+            try {
+                // First attempt: try back/environment camera
+                console.log("Attempting to access back camera...");
+                const backCameraStream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        facingMode: { exact: "environment" }
+                    },
+                    audio: false
+                });
+                
+                console.log("Back camera accessed successfully");
+                setCameraStream(backCameraStream);
+                setCurrentCameraType("environment");
+            } catch (backCameraError) {
+                // If back camera fails, fall back to front camera
+                console.log("Back camera failed, falling back to front camera...");
+                const frontCameraStream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        facingMode: { ideal: "user" }
+                    },
+                    audio: false
+                });
+                
+                console.log("Front camera accessed successfully");
+                setCameraStream(frontCameraStream);
+                setCurrentCameraType("user");
+            }
             
-            console.log("Camera access granted, setting stream");
-            setCameraStream(stream);
-            
-            // Video element setup is now handled in the useEffect
+            setIsVideoReady(false);
         } catch (err) {
             console.error("Error accessing camera:", err);
-            setError(`Error accessing camera: ${err.message || "Unknown error"}`);
+            setError(`Error accessing camera: ${err.message || "No camera available"}`);
         }
+    };
+
+    const switchCamera = () => {
+        const newCameraType = currentCameraType === "environment" ? "user" : "environment";
+        startCamera(newCameraType);
     };
 
     const stopCamera = () => {
@@ -192,6 +214,13 @@ const PhotoCaptureModal = ({ isOpen, onClose, onPhotoCapture }) => {
                                     {isVideoReady ? "Capture Photo" : "Camera initializing..."}
                                 </button>
                                 <button
+                                    onClick={switchCamera}
+                                    className="bg-green-600 hover:bg-green-700 p-2 rounded-lg"
+                                    title="Switch Camera"
+                                >
+                                    <SwitchCamera size={20} />
+                                </button>
+                                <button
                                     onClick={() => {
                                         stopCamera();
                                         startCamera(); // Restart camera
@@ -199,7 +228,7 @@ const PhotoCaptureModal = ({ isOpen, onClose, onPhotoCapture }) => {
                                     className="bg-yellow-600 hover:bg-yellow-700 p-2 rounded-lg"
                                     title="Restart Camera"
                                 >
-                                    <Camera size={20} />
+                                    <RefreshCw size={20} />
                                 </button>
                                 <button
                                     onClick={stopCamera}
@@ -240,10 +269,11 @@ const PhotoCaptureModal = ({ isOpen, onClose, onPhotoCapture }) => {
                 </div>
                 
                 {/* Debug info */}
-                <div className="mt-4 text-xs text-gray-400">
+                {/* <div className="mt-4 text-xs text-gray-400">
                     <p>Camera active: {cameraStream ? "Yes" : "No"}</p>
                     <p>Video ready: {isVideoReady ? "Yes" : "No"}</p>
-                </div>
+                    <p>Current camera: {currentCameraType === "environment" ? "Back" : "Front"}</p>
+                </div> */}
             </div>
         </div>
     );

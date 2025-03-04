@@ -395,10 +395,10 @@ const CalculatorPage = () => {
                 </div>
 
                 
-                <div className="text-gray-400 text-right text-lg h-6 font-mono truncate">
+                <div className="text-gray-400 text-right text-sm sm:text-lg h-4 sm:h-6 font-mono truncate">
                     {equation}
                 </div>
-                <div className="text-right text-white text-5xl font-mono truncate mt-2">
+                <div className="text-right text-white text-3xl sm:text-4xl md:text-5xl font-mono truncate mt-1 sm:mt-2">
                     {displayValue}
                 </div>
             </div>
