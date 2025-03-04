@@ -77,6 +77,19 @@ const Canvas = () => {
         }
     }, [result]);
 
+    // Add this useEffect hook to set up and remove event listeners
+    useEffect(() => {
+        // Prevent scrolling when touching the canvas
+        document.body.addEventListener("touchmove", preventTouchScroll, {
+            passive: false,
+        });
+
+        // Clean up the event listener when component unmounts
+        return () => {
+            document.body.removeEventListener("touchmove", preventTouchScroll);
+        };
+    }, []);
+
     // latex expressions
     const renderLatexToCanvas = (expression, answer) => {
         const latex = {
@@ -171,8 +184,17 @@ const Canvas = () => {
         if (canvas) {
             const ctx = canvas.getContext("2d");
             if (ctx) {
+                const x = e.nativeEvent.offsetX;
+                const y = e.nativeEvent.offsetY;
+
+                // Draw a dot immediately
+                drawDot(x, y);
+
+                // Also set up for potential line drawing
                 ctx.beginPath();
-                ctx.moveTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+                ctx.moveTo(x, y);
+                ctx.strokeStyle = color;
+                ctx.lineWidth = penWidth;
                 setIsDrawing(true);
             }
         }
@@ -180,6 +202,76 @@ const Canvas = () => {
 
     const stopDrawing = () => {
         setIsDrawing(false);
+    };
+
+    const preventTouchScroll = (e) => {
+        if (e.target === canvasRef.current) {
+            e.preventDefault();
+        }
+    };
+
+    // Modified drawDot function with increased dot size
+    const drawDot = (x, y) => {
+        const canvas = canvasRef.current;
+        if (canvas) {
+            const ctx = canvas.getContext("2d");
+            if (ctx) {
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                // Increase the dot size by using a larger multiplier for the radius
+                // Using penWidth * 0.75 instead of penWidth / 2
+                ctx.arc(x, y, penWidth * 0.75, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+    };
+
+    // Add these functions before the return statement in your Canvas component
+
+    const handleTouchStart = (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const canvas = canvasRef.current;
+        if (canvas) {
+            const rect = canvas.getBoundingClientRect();
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+
+            // Draw a dot immediately
+            drawDot(x, y);
+
+            // Also set up for potential line drawing
+            const ctx = canvas.getContext("2d");
+            if (ctx) {
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.strokeStyle = color;
+                ctx.lineWidth = penWidth;
+                setIsDrawing(true);
+            }
+        }
+    };
+
+    const handleTouchMove = (e) => {
+        e.preventDefault();
+        if (!isDrawing) {
+            return;
+        }
+        const touch = e.touches[0];
+        const canvas = canvasRef.current;
+        if (canvas) {
+            const rect = canvas.getBoundingClientRect();
+            const offsetX = touch.clientX - rect.left;
+            const offsetY = touch.clientY - rect.top;
+
+            const ctx = canvas.getContext("2d");
+            if (ctx) {
+                ctx.strokeStyle = color;
+                ctx.lineWidth = penWidth;
+                ctx.lineTo(offsetX, offsetY);
+                ctx.stroke();
+            }
+        }
     };
 
     // method for actual drawing
@@ -310,6 +402,22 @@ const Canvas = () => {
                 onMouseOut={stopDrawing}
                 onMouseUp={stopDrawing}
                 onMouseMove={draw}
+                onTouchStart={(e) => {
+                    e.preventDefault();
+                    handleTouchStart(e);
+                }}
+                onTouchMove={(e) => {
+                    e.preventDefault();
+                    handleTouchMove(e);
+                }}
+                onTouchEnd={(e) => {
+                    e.preventDefault();
+                    stopDrawing();
+                }}
+                onTouchCancel={(e) => {
+                    e.preventDefault();
+                    stopDrawing();
+                }}
             />
 
             {/* LaTeX Expressions */}
