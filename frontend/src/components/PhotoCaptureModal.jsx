@@ -1,11 +1,10 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Camera, Upload, X, RefreshCw, SwitchCamera } from "lucide-react";
+import { Camera, Upload, X } from "lucide-react";
 
 const PhotoCaptureModal = ({ isOpen, onClose, onPhotoCapture }) => {
     const [cameraStream, setCameraStream] = useState(null);
     const [isVideoReady, setIsVideoReady] = useState(false);
     const [error, setError] = useState(null);
-    const [currentCameraType, setCurrentCameraType] = useState("user");
     const videoRef = useRef(null);
     const fileInputRef = useRef(null);
 
@@ -44,9 +43,8 @@ const PhotoCaptureModal = ({ isOpen, onClose, onPhotoCapture }) => {
             // First stop any existing stream
             stopCamera();
             
+            // Try to access back camera first
             try {
-                // First attempt: try back/environment camera
-                console.log("Attempting to access back camera...");
                 const backCameraStream = await navigator.mediaDevices.getUserMedia({
                     video: {
                         width: { ideal: 1280 },
@@ -56,12 +54,12 @@ const PhotoCaptureModal = ({ isOpen, onClose, onPhotoCapture }) => {
                     audio: false
                 });
                 
-                console.log("Back camera accessed successfully");
                 setCameraStream(backCameraStream);
-                setCurrentCameraType("environment");
+                setIsVideoReady(false);
+                return;
             } catch (backCameraError) {
                 // If back camera fails, fall back to front camera
-                console.log("Back camera failed, falling back to front camera...");
+                console.log("Back camera access failed, trying front camera...");
                 const frontCameraStream = await navigator.mediaDevices.getUserMedia({
                     video: {
                         width: { ideal: 1280 },
@@ -71,21 +69,13 @@ const PhotoCaptureModal = ({ isOpen, onClose, onPhotoCapture }) => {
                     audio: false
                 });
                 
-                console.log("Front camera accessed successfully");
                 setCameraStream(frontCameraStream);
-                setCurrentCameraType("user");
+                setIsVideoReady(false);
             }
-            
-            setIsVideoReady(false);
         } catch (err) {
             console.error("Error accessing camera:", err);
             setError(`Error accessing camera: ${err.message || "No camera available"}`);
         }
-    };
-
-    const switchCamera = () => {
-        const newCameraType = currentCameraType === "environment" ? "user" : "environment";
-        startCamera(newCameraType);
     };
 
     const stopCamera = () => {
@@ -113,14 +103,19 @@ const PhotoCaptureModal = ({ isOpen, onClose, onPhotoCapture }) => {
         }
         
         try {
-            console.log(`Video dimensions: ${videoRef.current.videoWidth}x${videoRef.current.videoHeight}`);
-            
             const canvas = document.createElement("canvas");
-            canvas.width = videoRef.current.videoWidth || 640;
-            canvas.height = videoRef.current.videoHeight || 480;
+            const videoElement = videoRef.current;
+            
+            // Match the aspect ratio of the modal
+            canvas.width = 1280;
+            canvas.height = 720;
             
             const ctx = canvas.getContext("2d");
-            ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+            ctx.drawImage(
+                videoElement, 
+                0, 0, videoElement.videoWidth, videoElement.videoHeight,
+                0, 0, canvas.width, canvas.height
+            );
             
             const photoData = canvas.toDataURL("image/png");
             console.log("Photo captured");
@@ -162,9 +157,9 @@ const PhotoCaptureModal = ({ isOpen, onClose, onPhotoCapture }) => {
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-            <div className="bg-gray-800 text-white p-4 rounded-lg max-w-lg w-full">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold">
+            <div className="bg-[#1E2433] rounded-xl w-full max-w-[480px] shadow-2xl">
+                <div className="flex justify-between items-center p-4 border-b border-white/10">
+                    <h2 className="text-white text-lg font-semibold">
                         Capture or Upload Photo
                     </h2>
                     <button
@@ -172,22 +167,19 @@ const PhotoCaptureModal = ({ isOpen, onClose, onPhotoCapture }) => {
                             stopCamera();
                             onClose();
                         }}
-                        className="text-gray-400 hover:text-white"
+                        className="text-white/50 hover:text-white"
                     >
                         <X size={24} />
                     </button>
                 </div>
 
-                {error && (
-                    <div className="bg-red-600 text-white p-2 rounded-lg mb-4">
-                        {error}
-                    </div>
-                )}
-
-                <div className="space-y-4">
+                <div className="p-4">
                     {cameraStream ? (
-                        <div className="relative">
-                            <div className="bg-black rounded-lg" style={{ height: "300px" }}>
+                        <div className="space-y-4">
+                            <div 
+                                className="bg-black rounded-lg overflow-hidden"
+                                style={{ aspectRatio: "16/9" }}
+                            >
                                 <video
                                     ref={videoRef}
                                     autoPlay
@@ -196,43 +188,26 @@ const PhotoCaptureModal = ({ isOpen, onClose, onPhotoCapture }) => {
                                     onLoadedMetadata={handleVideoReady}
                                     onLoadedData={handleVideoReady}
                                     onError={handleVideoError}
-                                    className="w-full h-full rounded-lg"
-                                    style={{ objectFit: "contain" }}
+                                    className="w-full h-full object-cover"
                                 />
                             </div>
-                            <div className="mt-2 flex items-center gap-2">
+
+                            <div className="flex space-x-2">
                                 <button
                                     onClick={capturePhoto}
                                     disabled={!isVideoReady}
-                                    className={`w-full p-2 rounded-lg flex items-center justify-center gap-2 ${
+                                    className={`flex-1 py-3 rounded-lg text-white flex items-center justify-center space-x-2 ${
                                         isVideoReady
                                             ? "bg-blue-600 hover:bg-blue-700"
                                             : "bg-blue-400 cursor-not-allowed"
                                     }`}
                                 >
                                     <Camera size={20} />
-                                    {isVideoReady ? "Capture Photo" : "Camera initializing..."}
-                                </button>
-                                <button
-                                    onClick={switchCamera}
-                                    className="bg-green-600 hover:bg-green-700 p-2 rounded-lg"
-                                    title="Switch Camera"
-                                >
-                                    <SwitchCamera size={20} />
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        stopCamera();
-                                        startCamera(); // Restart camera
-                                    }}
-                                    className="bg-yellow-600 hover:bg-yellow-700 p-2 rounded-lg"
-                                    title="Restart Camera"
-                                >
-                                    <RefreshCw size={20} />
+                                    <span>{isVideoReady ? "Capture Photo" : "Camera initializing..."}</span>
                                 </button>
                                 <button
                                     onClick={stopCamera}
-                                    className="bg-red-600 hover:bg-red-700 p-2 rounded-lg"
+                                    className="bg-red-600 hover:bg-red-700 px-4 py-3 rounded-lg text-white"
                                 >
                                     <X size={20} />
                                 </button>
@@ -242,19 +217,19 @@ const PhotoCaptureModal = ({ isOpen, onClose, onPhotoCapture }) => {
                         <div className="space-y-2">
                             <button
                                 onClick={startCamera}
-                                className="w-full bg-blue-600 hover:bg-blue-700 p-2 rounded-lg flex items-center justify-center gap-2"
+                                className="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-lg text-white flex items-center justify-center space-x-2"
                             >
                                 <Camera size={20} />
-                                Start Camera
+                                <span>Start Camera</span>
                             </button>
 
                             <div className="relative">
                                 <button
                                     onClick={() => fileInputRef.current.click()}
-                                    className="w-full bg-gray-600 hover:bg-gray-700 p-2 rounded-lg flex items-center justify-center gap-2"
+                                    className="w-full bg-white/10 hover:bg-white/20 py-3 rounded-lg text-white flex items-center justify-center space-x-2"
                                 >
                                     <Upload size={20} />
-                                    Upload Photo
+                                    <span>Upload Photo</span>
                                 </button>
                                 <input
                                     ref={fileInputRef}
@@ -267,13 +242,6 @@ const PhotoCaptureModal = ({ isOpen, onClose, onPhotoCapture }) => {
                         </div>
                     )}
                 </div>
-                
-                {/* Debug info */}
-                {/* <div className="mt-4 text-xs text-gray-400">
-                    <p>Camera active: {cameraStream ? "Yes" : "No"}</p>
-                    <p>Video ready: {isVideoReady ? "Yes" : "No"}</p>
-                    <p>Current camera: {currentCameraType === "environment" ? "Back" : "Front"}</p>
-                </div> */}
             </div>
         </div>
     );

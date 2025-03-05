@@ -48,13 +48,10 @@ const analyze_image = async (image, dict_of_vars) => {
 
     let answers = [];
     try {
-        // Clean up the response text
         let cleanedResponse = responseText
-            // Remove markdown code block syntax
             .replace(/```json\n?/g, "")
             .replace(/```\n?/g, "")
-            // Replace only the quotes that are JSON property delimiters
-            .replace(/([{,]\s*)'([^']+)'(\s*:)/g, '$1"$2"$3')  // Replace property names
+            .replace(/([{,]\s*)'([^']+)'(\s*:)/g, '$1"$2"$3') 
             .replace(/:\s*'([^']+)'([,}])/g, ': "$1"$2')
             .trim();
 
@@ -64,7 +61,7 @@ const analyze_image = async (image, dict_of_vars) => {
 
         // console.log("Answered:", answers)
 
-        // Verify that answers is an array
+        // verify that answers is an array
         if (!Array.isArray(answers)) {
             console.error("Parsed response is not an array");
             return [];
