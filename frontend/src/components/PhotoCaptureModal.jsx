@@ -8,83 +8,90 @@ const PhotoCaptureModal = ({ isOpen, onClose, onPhotoCapture }) => {
     const videoRef = useRef(null);
     const fileInputRef = useRef(null);
 
-    // Clean up camera when component unmounts or modal closes
+    // clean up camera when component unmounts or modal closes
     useEffect(() => {
         if (isOpen) {
             setError(null);
         } else {
             stopCamera();
         }
-        
+
         return () => {
             stopCamera();
         };
     }, [isOpen]);
 
-    // Make sure video plays when stream is set
+    // video plays when stream is set
     useEffect(() => {
         if (cameraStream && videoRef.current) {
             videoRef.current.srcObject = cameraStream;
-            videoRef.current.play()
+            videoRef.current
+                .play()
                 .then(() => {
-                    console.log("Video playback started");
+                    // console.log("Video playback started");
                 })
-                .catch(err => {
+                .catch((err) => {
                     console.error("Error playing video:", err);
                     setError(`Error playing video: ${err.message}`);
                 });
         }
     }, [cameraStream]);
 
+    // start the camera
     const startCamera = async () => {
         try {
             setError(null);
-            
-            // First stop any existing stream
+
+            // stop any existing stream at the beginning
             stopCamera();
-            
-            // Try to access back camera first
+
+            // try to access back camera first
             try {
-                const backCameraStream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 },
-                        facingMode: { exact: "environment" }
-                    },
-                    audio: false
-                });
-                
+                const backCameraStream =
+                    await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 },
+                            facingMode: { exact: "environment" },
+                        },
+                        audio: false,
+                    });
+
                 setCameraStream(backCameraStream);
                 setIsVideoReady(false);
                 return;
             } catch (backCameraError) {
-                // If back camera fails, fall back to front camera
-                console.log("Back camera access failed, trying front camera...");
-                const frontCameraStream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 },
-                        facingMode: { ideal: "user" }
-                    },
-                    audio: false
-                });
-                
+                // if back camera fails, fall back to front camera
+                const frontCameraStream =
+                    await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 },
+                            facingMode: { ideal: "user" },
+                        },
+                        audio: false,
+                    });
+
                 setCameraStream(frontCameraStream);
                 setIsVideoReady(false);
             }
         } catch (err) {
             console.error("Error accessing camera:", err);
-            setError(`Error accessing camera: ${err.message || "No camera available"}`);
+            setError(
+                `Error accessing camera: ${
+                    err.message || "No camera available"
+                }`
+            );
         }
     };
 
+    // stop the camera and release resources
     const stopCamera = () => {
         if (cameraStream) {
-            console.log("Stopping camera stream");
             cameraStream.getTracks().forEach((track) => track.stop());
             setCameraStream(null);
             setIsVideoReady(false);
-            
+
             if (videoRef.current) {
                 videoRef.current.srcObject = null;
             }
@@ -96,29 +103,38 @@ const PhotoCaptureModal = ({ isOpen, onClose, onPhotoCapture }) => {
         setIsVideoReady(true);
     };
 
+    // capture photo and send image file
     const capturePhoto = () => {
         if (!videoRef.current || !isVideoReady) {
-            setError("Video not ready for capturing. Please wait for camera to initialize.");
+            setError(
+                "Video not ready for capturing. Please wait for camera to initialize."
+            );
             return;
         }
-        
+
         try {
             const canvas = document.createElement("canvas");
             const videoElement = videoRef.current;
-            
+
             // Match the aspect ratio of the modal
             canvas.width = 1280;
             canvas.height = 720;
-            
+
             const ctx = canvas.getContext("2d");
             ctx.drawImage(
-                videoElement, 
-                0, 0, videoElement.videoWidth, videoElement.videoHeight,
-                0, 0, canvas.width, canvas.height
+                videoElement,   // source: live video feed
+                0,
+                0,
+                videoElement.videoWidth,
+                videoElement.videoHeight,
+                0,
+                0,
+                canvas.width,
+                canvas.height
             );
-            
+
             const photoData = canvas.toDataURL("image/png");
-            console.log("Photo captured");
+            // console.log("Photo captured");
             onPhotoCapture(photoData);
             stopCamera();
             onClose();
@@ -128,14 +144,16 @@ const PhotoCaptureModal = ({ isOpen, onClose, onPhotoCapture }) => {
         }
     };
 
+    // when user upload image file
     const handleFileUpload = (event) => {
         const file = event.target.files[0];
         if (file) {
             try {
                 const reader = new FileReader();
                 reader.onloadend = () => {
+                    // sending the uploaded image file
                     onPhotoCapture(reader.result);
-                    onClose();
+                    onClose(); // close the photo mode
                 };
                 reader.onerror = () => {
                     setError("Error reading file");
@@ -150,7 +168,11 @@ const PhotoCaptureModal = ({ isOpen, onClose, onPhotoCapture }) => {
 
     const handleVideoError = (e) => {
         console.error("Video element error:", e);
-        setError(`Video error: ${e.target.error ? e.target.error.message : "Unknown error"}`);
+        setError(
+            `Video error: ${
+                e.target.error ? e.target.error.message : "Unknown error"
+            }`
+        );
     };
 
     if (!isOpen) return null;
@@ -176,7 +198,7 @@ const PhotoCaptureModal = ({ isOpen, onClose, onPhotoCapture }) => {
                 <div className="p-4">
                     {cameraStream ? (
                         <div className="space-y-4">
-                            <div 
+                            <div
                                 className="bg-black rounded-lg overflow-hidden"
                                 style={{ aspectRatio: "16/9" }}
                             >
@@ -203,7 +225,11 @@ const PhotoCaptureModal = ({ isOpen, onClose, onPhotoCapture }) => {
                                     }`}
                                 >
                                     <Camera size={20} />
-                                    <span>{isVideoReady ? "Capture Photo" : "Camera initializing..."}</span>
+                                    <span>
+                                        {isVideoReady
+                                            ? "Capture Photo"
+                                            : "Camera initializing..."}
+                                    </span>
                                 </button>
                                 <button
                                     onClick={stopCamera}
