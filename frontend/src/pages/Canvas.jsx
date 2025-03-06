@@ -45,7 +45,7 @@ const Canvas = () => {
                 canvas.width = window.innerWidth;
                 canvas.height = window.innerHeight - canvas.offsetTop;
 
-                canvas.lineCap = "round";
+                ctx.lineCap = "round";
                 ctx.lineWidth = penWidth;
             }
         }
@@ -77,20 +77,18 @@ const Canvas = () => {
         }
     }, [result]);
 
-    // Add this useEffect hook to set up and remove event listeners
+    // remove event listeners on touch screen
     useEffect(() => {
-        // Prevent scrolling when touching the canvas
         document.body.addEventListener("touchmove", preventTouchScroll, {
             passive: false,
         });
 
-        // Clean up the event listener when component unmounts
         return () => {
             document.body.removeEventListener("touchmove", preventTouchScroll);
         };
     }, []);
 
-    // latex expressions
+    // render latex expressions & clear the canvas
     const renderLatexToCanvas = (expression, answer) => {
         const latex = {
             expression: expression,
@@ -103,6 +101,23 @@ const Canvas = () => {
             const ctx = canvas.getContext("2d");
             if (ctx) {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+    };
+
+    // method for actual drawing
+    const draw = (e) => {
+        if (!isDrawing) {
+            return;
+        }
+        const canvas = canvasRef.current;
+        if (canvas) {
+            const ctx = canvas.getContext("2d");
+            if (ctx) {
+                ctx.strokeStyle = color;
+                ctx.lineWidth = penWidth;
+                ctx.lineTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+                ctx.stroke();
             }
         }
     };
@@ -210,7 +225,7 @@ const Canvas = () => {
         }
     };
 
-    // Modified drawDot function with increased dot size
+    // draw a round dot (circle)
     const drawDot = (x, y) => {
         const canvas = canvasRef.current;
         if (canvas) {
@@ -218,16 +233,13 @@ const Canvas = () => {
             if (ctx) {
                 ctx.fillStyle = color;
                 ctx.beginPath();
-                // Increase the dot size by using a larger multiplier for the radius
-                // Using penWidth * 0.75 instead of penWidth / 2
-                ctx.arc(x, y, penWidth * 0.75, 0, Math.PI * 2);
+                ctx.arc(x, y, penWidth * 0.5, 0, Math.PI * 2);
                 ctx.fill();
             }
         }
     };
 
-    // Add these functions before the return statement in your Canvas component
-
+    // for touch screen devices
     const handleTouchStart = (e) => {
         e.preventDefault();
         const touch = e.touches[0];
@@ -252,6 +264,7 @@ const Canvas = () => {
         }
     };
 
+    // for touch screen devices
     const handleTouchMove = (e) => {
         e.preventDefault();
         if (!isDrawing) {
@@ -274,23 +287,6 @@ const Canvas = () => {
         }
     };
 
-    // method for actual drawing
-    const draw = (e) => {
-        if (!isDrawing) {
-            return;
-        }
-        const canvas = canvasRef.current;
-        if (canvas) {
-            const ctx = canvas.getContext("2d");
-            if (ctx) {
-                ctx.strokeStyle = color;
-                ctx.lineWidth = penWidth;
-                ctx.lineTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
-                ctx.stroke();
-            }
-        }
-    };
-
     const resetCanvas = () => {
         const canvas = canvasRef.current;
         if (canvas) {
@@ -306,7 +302,7 @@ const Canvas = () => {
             {/* Hamburger Menu Button */}
             <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="fixed z-10 top-4 left-4 p-2 rounded-md bg-gray-400 text-black cursor-pointer"
+                className="absolute z-10 top-4 left-4 p-2 rounded-md bg-gray-400 text-black cursor-pointer"
             >
                 <Menu size={24} />
             </button>
@@ -314,7 +310,7 @@ const Canvas = () => {
             {/* Reset Button */}
             <button
                 onClick={() => setReset(true)}
-                className="fixed top-4 z-10 right-4 p-2 rounded-md bg-red-500 font-semibold duration-200 hover:bg-red-600 text-white"
+                className="absolute top-4 z-10 right-4 p-2 rounded-md bg-red-500 font-semibold duration-200 hover:bg-red-600 text-white cursor-pointer"
             >
                 Reset
             </button>
@@ -322,7 +318,7 @@ const Canvas = () => {
             {/* Calculate Button */}
             <button
                 onClick={sendData}
-                className="fixed bottom-4 right-4 p-2 calculate-btn font-semibold z-10 rounded-md min-w-[160px] h-[40px] flex items-center justify-center"
+                className="absolute bottom-4 right-4 p-2 calculate-btn font-semibold z-10 rounded-md min-w-[160px] h-[40px] flex items-center justify-center"
                 disabled={isLoading}
             >
                 {isLoading ? (
@@ -341,7 +337,7 @@ const Canvas = () => {
 
             {/* Sidebar Menu */}
             <div
-                className={`fixed left-0 top-0 h-full bg-gray-600 shadow-lg transition-transform duration-300 transform z-10 ${
+                className={` absolute left-0 top-0 h-full bg-gray-600 shadow-lg transition-transform duration-300 transform z-10 ${
                     isMenuOpen ? "translate-x-0" : "-translate-x-full"
                 }`}
             >
@@ -423,7 +419,7 @@ const Canvas = () => {
             {/* LaTeX Expressions */}
             {latexExpression &&
                 latexExpression.map((latex, index) => {
-                    // skip if only contains '='
+                    // skip if only contains '=' (first render)
                     if (latex.expression == "") return null;
 
                     if (!draggableRefs.current[index]) {

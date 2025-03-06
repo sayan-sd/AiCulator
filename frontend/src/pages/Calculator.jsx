@@ -25,26 +25,26 @@ const CalculatorPage = () => {
     const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
     const [showKeyboardInfo, setShowKeyboardInfo] = useState(false);
 
-    // Add keyboard event listener
+    // keyboard shortcuts
     useEffect(() => {
         const handleKeyDown = (event) => {
             event.preventDefault();
 
             const key = event.key;
 
-            // Handle numeric keys (0-9)
+            // handle numeric keys (0-9)
             if (/^[0-9]$/.test(key)) {
                 inputDigit(parseInt(key, 10));
                 return;
             }
 
-            // Handle decimal point
+            // handle decimal point
             if (key === ".") {
                 inputDot();
                 return;
             }
 
-            // Handle operations
+            // handle operations
             switch (key) {
                 case "+":
                     performOperation("add");
@@ -97,18 +97,15 @@ const CalculatorPage = () => {
             }
         };
 
-        // Add event listener when component mounts
         window.addEventListener("keydown", handleKeyDown);
 
-        // Remove event listener when component unmounts
         return () => {
             window.removeEventListener("keydown", handleKeyDown);
         };
-    }, [equation, displayValue, waitingForOperand]); // Dependencies for the useEffect
+    }, [equation, displayValue, waitingForOperand]); 
 
     const inputDigit = (digit) => {
         if (waitingForOperand) {
-            setDisplayValue(String(digit));
             setEquation(equation + String(digit));
             setWaitingForOperand(false);
         } else {
@@ -122,7 +119,6 @@ const CalculatorPage = () => {
 
     const inputDot = () => {
         if (waitingForOperand) {
-            // setDisplayValue("0.");
             setEquation(equation + "0.");
             setWaitingForOperand(false);
             return;
@@ -142,7 +138,6 @@ const CalculatorPage = () => {
 
     const evaluatePendingExpression = () => {
         try {
-            // trailing operators
             let expr = equation;
             if (["+", "-", "*", "/"].includes(expr.slice(-1))) {
                 expr = expr.slice(0, -1);
@@ -159,7 +154,6 @@ const CalculatorPage = () => {
 
     const calculateSquare = () => {
         try {
-            // calculate any pending expression
             const valueToSquare = evaluatePendingExpression();
 
             const value = parseFloat(valueToSquare);
@@ -174,7 +168,6 @@ const CalculatorPage = () => {
 
     const calculateQube = () => {
         try {
-            // calculate any pending expression
             const valueToCube = evaluatePendingExpression();
 
             const value = parseFloat(valueToCube);
@@ -189,7 +182,6 @@ const CalculatorPage = () => {
 
     const calculateSquareRoot = () => {
         try {
-            // calculate any pending expression
             const valueToRoot = evaluatePendingExpression();
 
             const value = parseFloat(valueToRoot);
@@ -210,7 +202,6 @@ const CalculatorPage = () => {
 
     const calculateFactorial = () => {
         try {
-            // First calculate any pending expression
             const valueForFactorial = evaluatePendingExpression();
 
             const value = parseInt(valueForFactorial);
@@ -233,7 +224,6 @@ const CalculatorPage = () => {
 
     const calculateLog = () => {
         try {
-            // First calculate any pending expression
             const valueForLog = evaluatePendingExpression();
 
             const value = parseFloat(valueForLog);
@@ -254,7 +244,6 @@ const CalculatorPage = () => {
 
     const calculatePercentage = () => {
         try {
-            // First calculate any pending expression
             const valueForPercentage = evaluatePendingExpression();
 
             const value = parseFloat(valueForPercentage);
@@ -270,6 +259,8 @@ const CalculatorPage = () => {
     };
 
     const performOperation = (op) => {
+        if (equation === "") return;
+
         const operators = {
             add: "+",
             subtract: "-",
@@ -291,7 +282,7 @@ const CalculatorPage = () => {
         try {
             let expr = equation;
 
-            // Handle trailing operators
+            // discard operator if at end
             if (["+", "-", "*", "/"].includes(expr.slice(-1))) {
                 expr = expr.slice(0, -1);
             }
@@ -309,8 +300,6 @@ const CalculatorPage = () => {
     };
 
     const handleBackspace = () => {
-        if (waitingForOperand) return;
-
         const newDisplay = displayValue.slice(0, -1) || "0";
         setDisplayValue(newDisplay);
         setEquation(equation.slice(0, -1));
@@ -319,13 +308,14 @@ const CalculatorPage = () => {
     const handlePhotoCapture = async (photoData) => {
         try {
             setDisplayValue("Processing...");
+            setEquation("");
 
             const response = await axios({
                 method: "post",
                 url: `${import.meta.env.VITE_API_URL}/calculate`,
                 data: {
                     image: photoData,
-                    dict_of_vars: {}, // Pass empty object if no variables are stored
+                    dict_of_vars: {},
                 },
                 headers: {
                     "Content-Type": "application/json",
@@ -351,9 +341,9 @@ const CalculatorPage = () => {
 
     return (
         <div className="min-h-screen h-full w-full bg-black p-4 flex flex-col">
-            {/* Display */}
+            {/* ========== Display =============== */}
             <div className="bg-gray-900 p-4 rounded-xl mb-4 flex-none">
-                {/* Keyboard Shortcuts Info */}
+                {/* shortcuts info */}
                 <div className="relative">
                     <button
                         onClick={() => setShowKeyboardInfo(!showKeyboardInfo)}
@@ -394,16 +384,15 @@ const CalculatorPage = () => {
                     )}
                 </div>
 
-                
-                <div className="text-gray-400 text-right text-lg h-6 font-mono truncate">
+                <div className="text-gray-400 text-right text-sm sm:text-lg h-4 sm:h-6 font-mono truncate">
                     {equation}
                 </div>
-                <div className="text-right text-white text-5xl font-mono truncate mt-2">
+                <div className="text-right text-white text-2xl sm:text-4xl md:text-5xl font-mono truncate mt-1 sm:mt-2">
                     {displayValue}
                 </div>
             </div>
 
-            {/* Controls */}
+            {/* ============== Controls ============== */}
             <div className="grid grid-cols-5 gap-2 flex-1">
                 {/* Row 1 */}
                 <button
